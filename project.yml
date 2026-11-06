@@ -1,1 +1,51 @@
 
+name: FahrtLive
+options:
+  bundleIdPrefix: com.fahrtlive
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.2"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGNING_ALLOWED: "NO"
+
+targets:
+  FahrtLive:
+    type: application
+    platform: iOS
+    sources:
+      - path: FahrtLive
+      - path: Shared
+    info:
+      path: FahrtLive/Info.plist
+      properties:
+        CFBundleDisplayName: FahrtLive
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSSupportsLiveActivities: true
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fahrtlive.personal
+    dependencies:
+      - target: FahrtLiveWidget
+        embed: true
+
+  FahrtLiveWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: FahrtLiveWidget
+      - path: Shared
+    info:
+      path: FahrtLiveWidget/Info.plist
+      properties:
+        CFBundleDisplayName: FahrtLive Widget
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fahrtlive.personal.widget
+        APPLICATION_EXTENSION_API_ONLY: "YES"
