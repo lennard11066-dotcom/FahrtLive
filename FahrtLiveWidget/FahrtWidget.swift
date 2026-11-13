@@ -1,4 +1,3 @@
-
 import SwiftUI
 import WidgetKit
 import ActivityKit
@@ -11,8 +10,22 @@ struct FahrtWidget: Widget {
                     Text(context.state.line)
                         .font(.headline)
                     Spacer()
-                    Text("+\(context.state.delayMinutes) Min.")
-                        .foregroundStyle(.orange)
+                    if context.state.hasRealtimeData {
+                        Text(
+                            context.state.delayMinutes > 0
+                                ? "+\(context.state.delayMinutes) Min."
+                                : (context.state.delayMinutes < 0
+                                    ? "\(abs(context.state.delayMinutes)) Min. früher"
+                                    : "Pünktlich")
+                        )
+                        .foregroundStyle(
+                            context.state.delayMinutes > 0 ? .orange : .green
+                        )
+                    } else {
+                        Text("Keine Echtzeit")
+                            .font(.caption)
+                            .foregroundStyle(.gray)
+                    }
                 }
 
                 Text(context.state.nextStop)

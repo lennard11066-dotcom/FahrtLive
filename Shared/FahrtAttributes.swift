@@ -1,4 +1,3 @@
-
 import ActivityKit
 import Foundation
 
@@ -10,6 +9,7 @@ struct FahrtAttributes: ActivityAttributes {
         var remainingMinutes: Int
         var delayMinutes: Int
         var progress: Double
+        var hasRealtimeData: Bool
     }
 
     var reise: String
