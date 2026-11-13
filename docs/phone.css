@@ -90,3 +90,242 @@ repeating-linear-gradient(90deg,#142c34 0 1px,transparent 2px 46px),#15252f;bord
 .phone-frame.widget-is-expanded .activity-area{top:45%}
 .phone-overlay{padding:54px 16px 26px}
 }
+
+/* ===========================================
+   FahrtLive Studio 2.2 – quiet iOS-inspired UI
+   One badge, one destination, one progress line.
+   =========================================== */
+.phone-frame{
+  background:linear-gradient(145deg,#777980 0%,#17191f 16%,#101215 75%,#707176 100%);
+  box-shadow:0 0 0 2px #33343a,0 26px 70px #000a;
+}
+.phone-screen{
+  background:
+    radial-gradient(ellipse 85% 50% at 50% 55%,#1f2027 0%,#0b0d13 53%,#040508 88%),
+    #07090d;
+}
+.phone-lock{top:87px}
+.lock-date{color:#f0f0f4;font-size:17px;font-weight:550;letter-spacing:-.3px}
+.lock-clock{color:#b6b7bc;font-weight:200;letter-spacing:-6px;text-shadow:0 1px 4px #ffffff16}
+.activity-area{top:54%}
+.phone-frame.widget-is-expanded .activity-area{top:40%}
+
+/* One contained element; remove competing chips and borders. */
+.live-card.ride-card{
+  position:relative;
+  min-height:171px;
+  padding:18px 17px 11px;
+  background:linear-gradient(160deg,#27282e 0%,#22232a 100%);
+  border:1px solid rgba(255,255,255,.095);
+  border-radius:25px;
+  box-shadow:0 14px 35px #0008,0 1px 1px #ffffff07 inset;
+  color:#f9f9fb;
+  transition:background .18s,border-color .18s,box-shadow .18s;
+}
+.live-card.ride-card:hover{border-color:rgba(255,255,255,.16)}
+.live-card.ride-card .live-topline{gap:12px;align-items:flex-start}
+.live-card.ride-card .live-card-body{flex:1;min-width:0;padding-right:9px}
+
+/* No colored chips: the line is a simple small label. */
+.live-route-label{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-bottom:6px;
+  color:#aeb4c0;
+  text-transform:uppercase;
+  letter-spacing:.7px;
+  font-size:10px;
+  font-weight:750;
+  line-height:1.25;
+}
+.live-route-line{color:#f7f9fb;font-size:11px;font-weight:850;letter-spacing:.15px}
+.live-route-separator{font-size:13px;color:#7c838f;line-height:1}
+.live-route-type{color:#b9bec8;font-size:9px;letter-spacing:.8px}
+.visually-hidden[hidden]{display:none!important}
+.live-pills,.service-pill,.line-pill,.operator-pill{display:none!important}
+
+/* Clear hierarchy / large enough to read at normal browser zoom. */
+.live-card.ride-card .live-heading{
+  color:#fff;
+  font-size:16px;
+  font-weight:780;
+  line-height:1.22;
+  letter-spacing:-.35px;
+  margin:0;
+  max-height:none;
+  overflow-wrap:anywhere;
+}
+.live-card.ride-card .live-secondary{
+  color:#e2e3e8;
+  font-size:12.5px;
+  line-height:1.32;
+  margin-top:7px;
+  font-weight:475;
+  overflow-wrap:anywhere;
+}
+.live-card.ride-card .live-tertiary{
+  color:#a8afba;
+  font-size:11px;
+  line-height:1.35;
+  margin-top:5px;
+  letter-spacing:.05px;
+}
+.live-card.ride-card .live-tertiary[hidden]{display:none}
+
+/* One easily recognizable badge. */
+.live-card.ride-card .transport-badge{
+  width:42px;
+  height:42px;
+  border:0;
+  box-shadow:none;
+  flex-shrink:0;
+  border-radius:11px;
+  font-size:27px;
+}
+.live-card.ride-card .transport-badge.sbahn{
+  border-radius:50%;
+  background:#138947;
+  box-shadow:inset 0 0 0 1px #ffffff20;
+}
+.live-card.ride-card .transport-badge.ubahn{
+  background:#2669b7;
+  border-radius:9px;
+}
+.live-card.ride-card .transport-badge.bus{
+  background:#ec9d27;
+  color:#20252b;
+}
+.live-card.ride-card .transport-badge.tram{
+  background:#c5343e;
+}
+.live-card.ride-card .transport-badge.rail{
+  background:#f5f5f6;
+  color:#e33535;
+  border:2px solid #e33535;
+  border-radius:8px;
+  font-size:16px;
+  letter-spacing:-1px;
+}
+.live-card.ride-card .transport-badge svg{width:26px;height:26px}
+
+/* Quiet map button, aligned with label rather than the main title. */
+.live-card.ride-card .map-open-button{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  padding:3px;
+  background:#ffffff07;
+  opacity:.78;
+}
+.live-card.ride-card .map-open-button:hover{background:#ffffff19;opacity:1}
+
+/* Slim progress line; touch target remains the full card width. */
+.live-card.ride-card .live-progress-wrap{margin:17px 1px 2px 0;gap:9px;height:27px}
+.live-card.ride-card .live-bar{
+  background:#d9b72a;
+  height:7px;
+  border-radius:20px;
+  box-shadow:none;
+}
+.live-card.ride-card .live-bar-fill{background:#87762c;border-radius:20px}
+.live-card.ride-card .location-marker{
+  width:26px;
+  height:26px;
+  font-size:12px;
+  line-height:1;
+  color:#fff;
+  border:2.5px solid #fff;
+  background:#3479eb;
+  box-shadow:0 0 0 1px #4c8cff,0 3px 9px #0007;
+  border-radius:50%;
+}
+.live-card.ride-card .stop-dot{width:6px;height:6px;right:5px}
+.live-card.ride-card .train-end{height:23px;width:19px;color:#ccd0d9}
+.live-card.ride-card .train-end svg{width:18px;height:18px}
+
+/* Details remain hidden until the user asks for them. */
+.live-card.ride-card .widget-toggle{
+  min-height:26px;
+  display:flex;
+  margin:7px auto 0;
+  padding:4px 12px 0;
+  border:0;
+  color:#a4a9b4;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:0;
+  border-radius:7px;
+}
+.live-card.ride-card .widget-toggle:hover{background:#ffffff0d;color:#fff}
+.live-card.ride-card .widget-details{
+  border-top:1px solid #ffffff18;
+  padding:13px 2px 3px;
+  margin-top:12px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:13px 12px;
+}
+.live-card.ride-card .widget-details[hidden]{display:none}
+.live-card.ride-card .widget-details:not([hidden]){display:grid}
+.live-card.ride-card .widget-details small{
+  color:#909aa8;
+  font-size:9px;
+  letter-spacing:.5px;
+  font-weight:700;
+}
+.live-card.ride-card .widget-details strong{
+  color:#f7f8fb;
+  font-size:11px;
+  font-weight:650;
+  line-height:1.3;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* Keep the rest of the lockscreen visually quieter. */
+.media-widget{
+  margin-top:12px;
+  padding:7px 8px 0;
+  opacity:.8;
+  gap:10px;
+}
+.media-left{gap:9px}
+.media-left>span:first-child{font-size:17px}
+.media-left strong{font-size:11px}
+.media-left small{font-size:10px}
+.media-logos{font-size:24px;gap:12px}
+.phone-bottom .quick-action{
+  width:39px;
+  height:39px;
+  background:#ffffff13;
+  border:1px solid #ffffff0d;
+  color:#e9e9ed;
+}
+.phone-bottom .focus-label{color:#d7d7dd;font-size:13px}
+.preview-chip{background:#19232d;border-color:#2c394a;color:#b4c1d0}
+
+/* Expanded view stays inside the phone, even with multi-stop labels. */
+.phone-frame.widget-is-expanded .live-card.ride-card{min-height:200px}
+.phone-frame.widget-is-expanded .media-widget{margin-top:8px;padding:4px 7px}
+
+/* Mobile screens: preserve breathing room without sacrificing legibility. */
+@media(max-width:520px){
+  .activity-area{top:54%}
+  .phone-frame.widget-is-expanded .activity-area{top:39%}
+  .live-card.ride-card{padding:15px 14px 10px;min-height:158px}
+  .live-card.ride-card .transport-badge{width:39px;height:39px;font-size:25px}
+  .live-card.ride-card .live-card-body{padding-right:7px}
+  .live-card.ride-card .live-heading{font-size:14.5px}
+  .live-card.ride-card .live-secondary{font-size:11.8px}
+  .live-card.ride-card .live-tertiary{font-size:10.6px}
+  .live-card.ride-card .live-route-label{font-size:9.5px;margin-bottom:5px}
+  .live-card.ride-card .live-progress-wrap{margin-top:13px}
+  .live-card.ride-card .widget-details{gap:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .live-card.ride-card,.live-card.ride-card *{transition:none!important}
+}

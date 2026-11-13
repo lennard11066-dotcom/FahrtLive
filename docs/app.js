@@ -329,6 +329,7 @@ function normalizeJourney(journey, id) {
     departure,
     arrival,
     line: firstTransit ? formatLine(firstTransit) : "Fußweg",
+    transportMode: firstTransit?.mode ?? null,
     nextStop: getNextStop(legs),
     arrivalDelay,
     refreshToken: journey.refreshToken || null,
@@ -434,6 +435,7 @@ function adaptMotisItinerary(itinerary, context = {}) {
         arrival: end, plannedArrival: scheduledEnd,
         arrivalDelay: delay,
         walking: nonTransit,
+        mode: leg.mode || null,
         line: nonTransit ? null : { name: route },
         name: nonTransit ? "Fußweg" : route,
         stopovers, cancelled: Boolean(leg.cancelled)
@@ -805,9 +807,19 @@ demoMode();
     if (/^S(?:\s|[0-9])/.test(name) || name==="S" || name.includes("S-BAHN")) return "s";
     if (/^U(?:\s|[0-9])/.test(name) || name==="U" || name.includes("U-BAHN")) return "u";
     if (/^(ICE|IC|EC|RE|RB|IRE|RJ|FLX|REGIO)/.test(name)) return "rail";
-    if (/^(STR|TRAM|STB|M[0-9]|T[0-9])/.test(name)) return "tram";
-    if (/^(BUS|X[0-9]|N[0-9]|[0-9])/.test(name)) return "bus";
+    if (/^(STR|TRAM|STB|T[0-9])/.test(name)) return "tram";
+    if (/^(BUS|M[0-9]|X[0-9]|N[0-9]|[0-9])/.test(name)) return "bus";
     return "rail";
+  }
+
+  function inferModeFromData(journey) {
+    const mode=String(journey.transportMode || "").toUpperCase();
+    if (["BUS","TROLLEYBUS","COACH"].includes(mode)) return "bus";
+    if (["TRAM","LIGHT_RAIL"].includes(mode)) return "tram";
+    if (["SUBWAY","METRO"].includes(mode)) return "u";
+    if (["SUBURBAN","SUBURBAN_RAILWAY"].includes(mode)) return "s";
+    if (["RAIL","HIGHSPEED_RAIL","HIGH_SPEED_RAIL","REGIONAL_RAIL"].includes(mode)) return "rail";
+    return inferMode(journey.line);
   }
 
   function badgeFor(type, line, phase) {
@@ -833,7 +845,7 @@ demoMode();
     const badge=$id("live-badge");
     const select=$id("demo-transport");
     const forced=state.mode==="demo" ? select.value : "auto";
-    const type=forced==="auto" ? inferMode(journey.line) : forced;
+    const type=forced==="auto" ? inferModeFromData(journey) : forced;
     const stage=state.mode==="demo" ? demoConfig.stage : "ride";
     const info=badgeFor(type,journey.line,stage);
     badge.className="transport-badge "+info.className;
@@ -842,6 +854,28 @@ demoMode();
     setText("live-line-pill",journey.line);
     setText("live-operator",info.operator);
     $id("live-progress-end").innerHTML=info.end;
+
+    // Kompakte, gut lesbare Informationen statt mehrerer Chips.
+    // Die Fahrtdaten bleiben unverändert; wir ändern nur die Beschriftung.
+    if (state.mode === "real") {
+      const delay = journey.cancelled
+        ? "Fällt aus"
+        : (journey.arrivalDelay === null
+            ? "Planzeit"
+            : delayText(Math.round(journey.arrivalDelay / 60)));
+      setText("live-heading", journey.destination);
+      setText("live-secondary", "Nächster Halt · " + journey.nextStop);
+      setText("live-tertiary", "Ankunft " + clockTime(journey.arrival) + " · " + delay);
+      setShown("live-tertiary", true);
+    } else if (stage === "ride") {
+      setText("live-heading", "Richtung " + demoConfig.direction);
+      setText("live-secondary", "Nächster Halt · " + demoConfig.nextStop);
+      const showDelay = $id("demo-show-delay").checked && demoConfig.delay !== 0;
+      setText("live-tertiary", showDelay
+        ? delayText(demoConfig.delay)
+        : demoConfig.nextMinutes + " Min. bis zum Halt");
+      setShown("live-tertiary", true);
+    }
     badge.disabled=state.mode!=="demo";
     badge.setAttribute("aria-label",state.mode==="demo"
       ? "Demo-Verkehrsmittel wechseln. Aktuell: "+info.service
@@ -852,7 +886,7 @@ demoMode();
     $id("widget-toggle").setAttribute("aria-expanded",String(preview.expanded));
     $id("widget-toggle").innerHTML=preview.expanded
       ? 'Weniger anzeigen <span aria-hidden="true">⌃</span>'
-      : 'Mehr anzeigen <span aria-hidden="true">⌄</span>';
+      : 'Fahrtdetails <span aria-hidden="true">⌄</span>';
     $id("phone-root").classList.toggle("widget-is-expanded",preview.expanded);
 
     const progress=state.mode==="demo"
