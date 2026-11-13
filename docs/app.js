@@ -377,18 +377,47 @@ function showBusy(busy) {
   elements.search.textContent = busy ? "Verbindung wird geladen …" : "⌕ Verbindungen suchen";
 }
 
-function adaptMotisItinerary(itinerary) {
-  if (!itinerary || !Array.isArray(itinerary.legs)) return null;
+// MOTIS kann synthetische Orte namens START/END statt echter Haltestellen liefern.
+// Diese gehören nicht in Verbindungslisten oder in die Live-Aktivität.
+function isRealStopName(name) {
+  return typeof name === "string" && name.trim().length > 0 &&
+    !["START", "END"].includes(name.trim().toUpperCase());
+}
+
+function safeStopName(name, fallback) {
+  return isRealStopName(name) ? name.trim() : fallback;
+}
+
+function adaptMotisItinerary(itinerary, context = {}) {
+  if (!itinerary || !Array.isArray(itinerary.legs) || !itinerary.legs.length) return null;
+  const legs = itinerary.legs;
+  // Bevorzugt wird die vom Nutzer ausgewählte Haltestelle. Für gespeicherte
+  // Fahrt-IDs ohne Kontext nutzen wir den letzten echten Halt aus der Antwort.
+  const allPlaces = legs.flatMap(leg => [leg.from, ...(leg.intermediateStops || []), leg.to]);
+  const firstRealStop = allPlaces.find(place => isRealStopName(place?.name))?.name;
+  const lastRealStop = [...allPlaces].reverse().find(place => isRealStopName(place?.name))?.name;
+  const originName = safeStopName(context.originName, firstRealStop || "Start");
+  const destinationName = safeStopName(context.destinationName, lastRealStop || "Ziel");
+
+  function displayPlace(place, fallback) {
+    const raw = place?.name;
+    if (typeof raw === "string" && raw.trim().toUpperCase() === "START") return originName;
+    if (typeof raw === "string" && raw.trim().toUpperCase() === "END") return destinationName;
+    return safeStopName(raw, fallback);
+  }
+
   return {
     refreshToken: itinerary.id || null,
-    legs: itinerary.legs.map(leg => {
+    legs: legs.map((leg, index) => {
       const nonTransit = ["WALK", "BIKE", "CAR"].includes(leg.mode);
       const route = leg.displayName || leg.routeShortName || leg.tripShortName ||
         leg.routeLongName || leg.mode || "Verbindung";
-      // Alte UI erwartet HAFAS-ähnliche Legs; convertiert aus MOTIS.
+      const fromName = displayPlace(leg.from, index === 0 ? originName : "Start");
+      const toName = displayPlace(leg.to, index === legs.length - 1 ? destinationName : "Ziel");
+      // Auch Zwischenhalte enthalten gelegentlich künstliche START/END-Orte.
       const stopovers = [leg.from, ...(leg.intermediateStops || []), leg.to]
         .filter(Boolean).map(stop => ({
-          stop: { name: stop.name },
+          stop: { name: displayPlace(stop, toName) },
           arrival: stop.arrival || stop.scheduledArrival || null,
           departure: stop.departure || stop.scheduledDeparture || null
         }));
@@ -399,8 +428,8 @@ function adaptMotisItinerary(itinerary) {
         ? Math.round((new Date(end).getTime() - new Date(scheduledEnd).getTime()) / 1000)
         : null;
       return {
-        origin: { name: leg.from?.name || "Start" },
-        destination: { name: leg.to?.name || "Ziel" },
+        origin: { name: fromName },
+        destination: { name: toName },
         departure: start, plannedDeparture: leg.scheduledStartTime,
         arrival: end, plannedArrival: scheduledEnd,
         arrivalDelay: delay,
@@ -453,9 +482,19 @@ async function requestJSON(path, params = {}) {
     }
     if (path === "/journeys") {
       if (!Array.isArray(result.itineraries)) throw new Error("Ungültige Verbindungsantwort.");
-      return { journeys: result.itineraries.slice(0,5).map(adaptMotisItinerary).filter(Boolean) };
+      return {
+        journeys: result.itineraries.slice(0, 5)
+          .map(itinerary => adaptMotisItinerary(itinerary, {
+            originName: params.originName,
+            destinationName: params.destinationName
+          }))
+          .filter(Boolean)
+      };
     }
-    const converted = adaptMotisItinerary(result);
+    const converted = adaptMotisItinerary(result, {
+      originName: params.originName,
+      destinationName: params.destinationName
+    });
     if (!converted) throw new Error("Die Fahrt konnte nicht aktualisiert werden.");
     return { journey: converted };
   } catch(error) {
@@ -495,6 +534,7 @@ async function searchJourneys() {
     const [origin, destination] = await Promise.all([resolveStop(from), resolveStop(to)]);
     const response = await requestJSON("/journeys", {
       from: origin.id, to: destination.id, results: "5",
+      originName: origin.name || from, destinationName: destination.name || to,
       stopovers: "true", language: "de", routingMode: "HYBRID"
     });
     if (!Array.isArray(response.journeys)) throw new Error("Ungültige Verbindungsantwort.");
@@ -526,7 +566,10 @@ async function refreshSelected(silent = false) {
   if (!silent) displayStatus("Aktuelle Fahrtdaten werden abgerufen …");
   try {
     const urlPath = "/journeys/" + encodeURIComponent(current.refreshToken);
-    const response = await requestJSON(urlPath, {stopovers:"true", language:"de"});
+    const response = await requestJSON(urlPath, {
+      stopovers: "true", language: "de",
+      originName: current.origin, destinationName: current.destination
+    });
     const fresh = normalizeJourney(response.journey, selectedID);
     if (!fresh) throw new Error("Die aktualisierte Fahrt konnte nicht gelesen werden.");
     if (state.selectedId !== selectedID) return;
