@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#09121e">
+  <meta name="description" content="FahrtLive Browser-Testversion mit DB-Verbindungssuche und Live-Aktivität-Vorschau.">
+  <title>FahrtLive – Browser-Testversion</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="page">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="FahrtLive Startseite">
+        <span class="logo" aria-hidden="true">🚆</span>
+        <span>Fahrt<span class="brand-accent">Live</span></span>
+      </a>
+      <span class="env-label"><span class="pulse-dot" aria-hidden="true"></span> BROWSER-TESTVERSION</span>
+    </header>
+
+    <main class="main-grid">
+      <section class="workspace" aria-labelledby="heading">
+        <div class="eyebrow">DEINE REISE IM BLICK</div>
+        <h1 id="heading">Unterwegs.<br><span>Alles im Blick.</span></h1>
+        <p class="intro">Teste FahrtLive auf deinem PC: Suche echte Verbindungen und sieh dir an, wie die Live-Aktivität auf deinem iPhone 14 Plus aussehen kann.</p>
+
+        <div class="panel search-panel">
+          <div class="panel-head">
+            <div>
+              <div class="tiny-title">VERBINDUNGSSUCHE</div>
+              <h2>Wohin geht’s?</h2>
+            </div>
+            <span class="panel-icon" aria-hidden="true">⌁</span>
+          </div>
+          <form id="route-form" autocomplete="off">
+            <div class="route-inputs">
+              <label class="field" for="from">
+                <span class="field-mark field-start" aria-hidden="true"></span>
+                <span class="field-body"><span class="field-label">START</span>
+                  <input id="from" name="from" type="text" value="Kronberg (Taunus)" required maxlength="120" placeholder="Start-Haltestelle"></span>
+              </label>
+              <button id="swap" class="swap" type="button" aria-label="Start und Ziel tauschen" title="Start und Ziel tauschen">⇅</button>
+              <label class="field" for="to">
+                <span class="field-mark field-end" aria-hidden="true"></span>
+                <span class="field-body"><span class="field-label">ZIEL</span>
+                  <input id="to" name="to" type="text" value="Frankfurt (Main) Hbf" required maxlength="120" placeholder="Ziel-Haltestelle"></span>
+              </label>
+            </div>
+            <button id="search" type="submit" class="primary"><span class="search-icon" aria-hidden="true">⌕</span> Verbindungen suchen</button>
+          </form>
+          <div class="actions">
+            <button type="button" class="secondary" id="demo">Demo-Fahrt starten</button>
+            <button type="button" class="secondary" id="refresh" disabled>↻ Daten aktualisieren</button>
+          </div>
+          <div class="update-row">
+            <label class="toggle-label" for="auto">
+              <input id="auto" type="checkbox" checked>
+              <span class="toggle-art" aria-hidden="true"></span>
+              <span>Automatische Updates <small>alle 60 Sekunden bei geöffnetem Tab</small></span>
+            </label>
+          </div>
+          <div id="status" class="status" role="status" aria-live="polite" data-kind="info">Demo ist bereit. Für echte Fahrtdaten „Verbindungen suchen“ auswählen.</div>
+        </div>
+
+        <section class="connections-wrap" aria-labelledby="connection-title">
+          <div class="section-title-row">
+            <h2 id="connection-title">Verbindungen <span id="result-count" class="count">DEMO</span></h2>
+            <span id="last-updated" class="updated">Vorschau</span>
+          </div>
+          <div id="journey-list" class="journey-list" aria-live="polite"></div>
+        </section>
+
+        <section class="panel detail-panel" aria-labelledby="detail-title">
+          <div class="section-title-row details-head">
+            <h2 id="detail-title">Deine ausgewählte Fahrt</h2>
+            <span id="data-mode" class="mode-chip">DEMO</span>
+          </div>
+          <div id="journey-detail"></div>
+        </section>
+
+        <footer>Keine offizielle App der DB oder des RMV. Daten: <a href="https://v6.db.transport.rest/" target="_blank" rel="noopener noreferrer">db.transport.rest</a>. Die Browser-Vorschau ist keine echte iOS-Live-Aktivität.</footer>
+      </section>
+
+      <aside class="preview-side" aria-labelledby="preview-heading">
+        <div class="preview-head">
+          <div><div class="eyebrow">LIVE-AKTIVITÄT</div><h2 id="preview-heading">Dein Sperrbildschirm</h2></div>
+          <span class="preview-pill">iPhone 14 Plus</span>
+        </div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="wallpaper-orb orb-one"></div><div class="wallpaper-orb orb-two"></div>
+            <div class="statusbar">
+              <span id="phone-status-time">9:41</span>
+              <div class="island-notch" aria-hidden="true"></div>
+              <span class="status-right">●●● 5G ▰</span>
+            </div>
+            <div class="lock">
+              <div class="lock-icon" aria-hidden="true">♙</div>
+              <div id="lock-date" class="lock-date">Freitag, 13. November</div>
+              <div id="lock-clock" class="lock-clock">09:41</div>
+            </div>
+            <section class="live-card" aria-label="Vorschau der Live-Aktivität">
+              <div class="live-top">
+                <div class="live-title"><span class="live-symbol" aria-hidden="true">▰</span><span id="live-line">S4</span><small>FAHRTL IVE</small></div>
+                <span id="live-delay" class="delay-pill">+5 Min.</span>
+              </div>
+              <div class="live-sub">NÄCHSTER HALT</div>
+              <div id="live-next" class="live-next">Frankfurt-Rödelheim</div>
+              <div class="live-bar"><div id="live-progress" class="live-bar-fill"></div></div>
+              <div class="live-footer">
+                <div><span class="live-small">ZIEL</span><strong id="live-destination">Frankfurt (Main) Hbf</strong></div>
+                <div class="right"><span class="live-small">ANKUNFT / REST</span><strong><span id="live-arrival">08:12</span> · <span id="live-remaining">22 Min.</span></strong></div>
+              </div>
+            </section>
+            <div class="lock-bottom"><span class="lock-button" aria-hidden="true">⌁</span><span class="swipe-bar"></span><span class="lock-button" aria-hidden="true">◎</span></div>
+          </div>
+        </div>
+        <div class="preview-note"><span aria-hidden="true">◌</span> Diese Anzeige ist eine Simulation im Browser, keine echte iOS-Sperrbildschirm-Aktivität.</div>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>
