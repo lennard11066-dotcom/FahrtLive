@@ -3,8 +3,9 @@ import Foundation
 // Inoffizielle, kostenlos nutzbare DB-Datenschnittstelle:
 // https://v6.db.transport.rest/
 // Die API ist nicht Teil von Deutsche Bahn und benötigt keinen API-Schlüssel.
-struct DBConnection: Identifiable {
-    let id = UUID()
+struct DBConnection: Identifiable, Codable {
+    let id: UUID
+    let refreshToken: String?
     let line: String
     let nextStop: String
     let origin: String
@@ -39,6 +40,7 @@ enum DBAPIError: LocalizedError {
     case missingStop(String)
     case noJourneys
     case invalidData
+    case missingRefreshToken
 
     var errorDescription: String? {
         switch self {
@@ -54,6 +56,8 @@ enum DBAPIError: LocalizedError {
             return "Für diese Strecke wurden keine Verbindungen gefunden."
         case .invalidData:
             return "Die DB-Antwort konnte nicht verarbeitet werden."
+        case .missingRefreshToken:
+            return "Diese Verbindung unterstützt keine automatische Aktualisierung."
         }
     }
 }
@@ -88,14 +92,53 @@ private struct DBLeg: Decodable {
 
 private struct DBJourney: Decodable {
     let legs: [DBLeg]
+    let refreshToken: String?
 }
 
 private struct DBJourneysResponse: Decodable {
     let journeys: [DBJourney]
 }
 
+private struct DBRefreshedJourneyResponse: Decodable {
+    let journey: DBJourney
+}
+
 enum DBClient {
     private static let baseURL = "https://v6.db.transport.rest"
+
+    // Lädt exakt die ausgewählte Fahrt nach, ohne eine neue Route zu suchen.
+    static func refresh(_ connection: DBConnection) async throws -> DBConnection {
+        guard let token = connection.refreshToken, !token.isEmpty else {
+            throw DBAPIError.missingRefreshToken
+        }
+
+        // Das Token ist ein einzelnes URL-Pfadsegment.
+        let allowed = CharacterSet.urlPathAllowed.subtracting(
+            CharacterSet(charactersIn: "/?#%")
+        )
+        guard let encodedToken = token.addingPercentEncoding(withAllowedCharacters: allowed) else {
+            throw DBAPIError.invalidURL
+        }
+
+        let response: DBRefreshedJourneyResponse = try await request(
+            "journeys/\(encodedToken)",
+            parameters: [
+                URLQueryItem(name: "stopovers", value: "true"),
+                URLQueryItem(name: "language", value: "de")
+            ]
+        )
+
+        guard let updated = parseJourney(
+            response.journey,
+            origin: connection.origin,
+            destination: connection.destination,
+            existingID: connection.id,
+            fallbackRefreshToken: token
+        ) else {
+            throw DBAPIError.invalidData
+        }
+        return updated
+    }
 
     static func connections(from start: String, to end: String) async throws -> [DBConnection] {
         let fromQuery = start.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -185,7 +228,9 @@ enum DBClient {
     private static func parseJourney(
         _ journey: DBJourney,
         origin: String,
-        destination: String
+        destination: String,
+        existingID: UUID? = nil,
+        fallbackRefreshToken: String? = nil
     ) -> DBConnection? {
         guard let first = journey.legs.first,
               let last = journey.legs.last,
@@ -231,6 +276,8 @@ enum DBClient {
         let routeSummary = names.joined(separator: " → ")
 
         return DBConnection(
+            id: existingID ?? UUID(),
+            refreshToken: journey.refreshToken ?? fallbackRefreshToken,
             line: line,
             nextStop: nextStop,
             origin: origin,

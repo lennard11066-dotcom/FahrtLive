@@ -3,6 +3,8 @@ import ActivityKit
 
 @main
 struct FahrtLiveApp: App {
+    @UIApplicationDelegateAdaptor(FahrtLiveAppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -11,6 +13,9 @@ struct FahrtLiveApp: App {
 }
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var refreshing = false
+
     @State private var fromStop = "Kronberg (Taunus)"
     @State private var toStop = "Frankfurt (Main) Hbf"
     @State private var connections: [DBConnection] = []
@@ -78,6 +83,7 @@ struct ContentView: View {
                             ForEach(connections) { connection in
                                 Button {
                                     selectedConnection = connection
+                                    JourneyRefreshStore.save(connection)
                                     status = "Verbindung ausgewählt: \(connection.routeSummary)"
                                 } label: {
                                     HStack {
@@ -114,6 +120,7 @@ struct ContentView: View {
 
                         Button("Zur Demo wechseln") {
                             selectedConnection = nil
+                            JourneyRefreshStore.clear()
                             status = "Demo-Modus ausgewählt"
                         }
                     } else {
@@ -158,7 +165,7 @@ struct ContentView: View {
                     Text(
                         selectedConnection == nil
                             ? "Demo – keine echten Fahrtdaten"
-                            : "Daten: inoffizielle DB transport.rest API. Nur manuelle Aktualisierung; keine Hintergrundabfrage."
+                            : "Daten: inoffizielle DB transport.rest API. Automatische Prüfung alle 60 Sekunden bei geöffneter App. Hintergrundupdates nur, wenn iOS sie erlaubt."
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -166,6 +173,52 @@ struct ContentView: View {
                 .padding()
             }
             .navigationTitle("FahrtLive")
+            .onAppear {
+                if selectedConnection == nil,
+                   let stored = JourneyRefreshStore.load(),
+                   stored.arrival > Date() {
+                    selectedConnection = stored
+                    connections = [stored]
+                }
+            }
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await refreshSelectedConnection()
+                while !Task.isCancelled {
+                    do {
+                        try await Task.sleep(nanoseconds: 60_000_000_000)
+                    } catch {
+                        break
+                    }
+                    guard !Task.isCancelled else { break }
+                    await refreshSelectedConnection()
+                }
+            }
+        }
+    }
+
+    // iOS stoppt diesen Timer, sobald die App nicht mehr aktiv ist.
+    @MainActor
+    private func refreshSelectedConnection() async {
+        guard !refreshing,
+              let current = selectedConnection,
+              current.arrival > Date() else { return }
+
+        refreshing = true
+        defer { refreshing = false }
+        do {
+            let updated = try await DBClient.refresh(current)
+            guard selectedConnection?.id == current.id else { return }
+
+            selectedConnection = updated
+            if let index = connections.firstIndex(where: { $0.id == current.id }) {
+                connections[index] = updated
+            }
+            JourneyRefreshStore.save(updated)
+            await JourneyRefreshStore.updateLiveActivity(for: updated)
+            status = "Live-Daten aktualisiert: \(Date().formatted(date: .omitted, time: .shortened))"
+        } catch {
+            status = "Automatisches Update fehlgeschlagen: \(error.localizedDescription)"
         }
     }
 
@@ -179,10 +232,14 @@ struct ContentView: View {
             let results = try await DBClient.connections(from: fromStop, to: toStop)
             connections = results
             selectedConnection = results.first
+            if let first = results.first {
+                JourneyRefreshStore.save(first)
+            }
             status = "\(results.count) Verbindungen gefunden."
         } catch {
             connections = []
             selectedConnection = nil
+            JourneyRefreshStore.clear()
             status = "Fehler: \(error.localizedDescription)"
         }
     }
