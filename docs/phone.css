@@ -1,0 +1,92 @@
+/* FahrtLive Studio – interaktive RMV-/DB-inspirierte Verkehrs-Badges */
+.live-card.ride-card{background:linear-gradient(145deg,#292b31,#1c2028);border:1px solid #4a4d55;border-radius:21px;padding:14px 14px 11px;min-height:132px;box-shadow:0 12px 25px #0007;color:#f8f9fb;transition:background .2s,border-color .2s}
+.live-card.ride-card:hover{border-color:#6c737e}
+.live-card.ride-card .live-topline{display:flex;gap:10px;align-items:flex-start}
+.transport-badge{width:38px;height:38px;padding:0;flex-shrink:0;display:grid;place-items:center;border:2px solid #e3eced22;color:white;font-size:29px;line-height:1;font-weight:900;font-family:Arial,Helvetica,sans-serif;transition:transform .15s,box-shadow .15s;cursor:pointer}
+.transport-badge:hover:not(:disabled){transform:scale(1.08);box-shadow:0 0 0 3px #ffffff22}
+.transport-badge:disabled{cursor:default}
+.transport-badge.sbahn{border-radius:50%;background:#138a4a;box-shadow:inset 0 0 0 1px #aaf1c033}
+.transport-badge.ubahn{border-radius:8px;background:#215ba8;font-weight:900}
+.transport-badge.bus{border-radius:9px;background:#f1a62b;color:#1c2430}
+.transport-badge.tram{border-radius:9px;background:#c72d36}
+.transport-badge.rail{width:42px;border-radius:8px;border:3px solid #f0403b;background:#fff;color:#e22f2d;font-size:17px;letter-spacing:-1.8px;box-shadow:inset 0 0 0 2px #fff}
+.transport-badge svg{display:block;width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.live-card.ride-card .live-card-body{flex:1;min-width:0}
+.live-pills{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 7px}
+.service-pill,.line-pill,.operator-pill{font-size:8px;line-height:1.4;font-weight:850;letter-spacing:.35px;padding:3px 5px;border-radius:5px;color:#c3d8df;background:#3b444d}
+.line-pill{color:#f7f8fa;background:#4c5763}
+.operator-pill{color:#a6cde4;background:#24394b}
+.live-card .live-heading{font-size:14px;line-height:1.2;font-weight:800;letter-spacing:-.2px;color:#f7f8fa;max-height:3.6em;overflow:hidden}
+.live-card .live-secondary{font-size:12px;margin-top:5px;color:#e2e6eb;line-height:1.3}
+.live-card .live-tertiary{font-size:11px;margin-top:4px;color:#aeb4c1;line-height:1.3}
+.live-card .live-tertiary[hidden]{display:none}
+.map-open-button{width:26px;height:26px;padding:2px;border:0;flex:none;display:grid;place-items:center;background:transparent;border-radius:9px;cursor:pointer}
+.map-open-button:hover{background:#ffffff15}
+.live-card .live-progress-wrap{margin:17px 2px 8px 0;display:flex;align-items:center;gap:9px}
+.live-card .live-progress-wrap[hidden]{display:none}
+.live-card .live-bar{height:12px;border-radius:12px;background:linear-gradient(90deg,#c6ae26,#eecb1d);box-shadow:inset 0 0 0 1px #ecd14955;cursor:pointer;touch-action:pan-y}
+.live-card .live-bar[aria-disabled=true]{cursor:default}
+.live-card .live-bar:focus-visible{outline:2px solid #ffffff;outline-offset:5px}
+.live-card .live-bar-fill{background:#91801a;border-radius:12px}
+.live-card .location-marker{width:34px;height:34px;background:#2774f6;color:white;border:3px solid #fff;box-shadow:0 0 0 2px #2a6de2,0 4px 12px #071b3c;display:grid;place-items:center;font-size:17px;pointer-events:none;transition:left .15s}
+.live-card .stop-dot{width:8px;height:8px;right:6px;background:#fff8ac}
+.live-card .train-end{width:23px;height:26px;flex-shrink:0;display:grid;place-items:center;color:#d9e0e6}
+.live-card .train-end svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.widget-toggle{display:flex;align-items:center;justify-content:center;gap:5px;color:#aeb9c9;background:transparent;border:0;font-size:9px;line-height:1.3;margin:5px auto 0;min-height:18px;padding:0 10px;letter-spacing:.2px}
+.widget-toggle:hover{color:white}
+.widget-toggle span{display:inline-block;transition:transform .2s}
+.widget-toggle[aria-expanded=true] span{transform:rotate(180deg)}
+.widget-details{margin-top:11px;padding:9px;border-top:1px solid #ffffff1c;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px}
+.widget-details:not([hidden]){display:grid}
+.widget-details[hidden]{display:none}
+.widget-details>div{min-width:0}
+.widget-details>div.wide{grid-column:span 2}
+.widget-details small{color:#99aabc;font-size:8px;font-weight:750;letter-spacing:.5px;display:block;margin-bottom:3px}
+.widget-details strong{font-size:10px;color:#f1f6ff;font-weight:750;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phone-frame.widget-is-expanded .activity-area{top:47%}
+.phone-frame.widget-is-expanded .media-widget{padding:6px 5px}
+.phone-bottom .quick-action{border:1px solid #ffffff1c;cursor:pointer;transition:transform .15s,background .15s,color .15s}
+.phone-bottom .quick-action:hover{transform:scale(1.06)}
+.phone-bottom .quick-action[aria-pressed=true]{background:#fff0a6;color:#141515;box-shadow:0 0 22px #fff1ad77}
+.phone-bottom button.home-indicator{border:0;padding:0;cursor:pointer;z-index:3}
+.phone-bottom button.home-indicator:hover{background:#43a1fa}
+.phone-frame.is-flash-on .phone-screen{box-shadow:inset 0 0 65px #fff4c750}
+.phone-frame.is-flash-on .phone-bottom .quick-action[aria-pressed=true]{background:#fff1b8}
+.phone-overlay{position:absolute;inset:0;z-index:25;color:#fff;padding:60px 22px 32px;background:linear-gradient(160deg,#172637 0%,#090d18 55%,#161d2e 100%);display:flex;flex-direction:column;gap:14px;border-radius:inherit}
+.phone-overlay[hidden]{display:none}
+.overlay-title-row{display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:15px}
+.overlay-close{background:#ffffff23;border:1px solid #ffffff22;border-radius:12px;color:#fff;width:36px;height:36px;font-size:16px;cursor:pointer}
+.overlay-close:hover{background:#ffffff3a}
+.phone-overlay p{color:#aab8c7;font-size:11px;line-height:1.6}
+.mock-map{position:relative;min-height:245px;overflow:hidden;border-radius:17px;background:
+linear-gradient(28deg,transparent 0 41%,#2c4350 42% 44%,transparent 45% 100%),
+linear-gradient(124deg,transparent 0 38%,#40505f 39% 41%,transparent 42% 100%),
+repeating-linear-gradient(0deg,#142c34 0 1px,transparent 2px 45px),
+repeating-linear-gradient(90deg,#142c34 0 1px,transparent 2px 46px),#15252f;border:1px solid #54707855}
+.map-route-line{position:absolute;left:36%;top:8%;width:11px;height:83%;transform:rotate(25deg);border-radius:10px;background:linear-gradient(#e8bc29,#448ef7)}
+.map-start-dot,.map-destination-dot{position:absolute;width:19px;height:19px;border-radius:50%;border:3px solid white;background:#27b4a7;left:24%;bottom:12%}
+.map-destination-dot{left:55%;top:9%;bottom:auto;background:#f7ca25}
+.map-position{position:absolute;left:40%;top:45%;background:#247cff;border:3px solid white;border-radius:50%;color:white;display:grid;place-items:center;width:36px;height:36px}
+.map-stop-info{display:flex;flex-direction:column;gap:4px;background:#ffffff0d;border-radius:12px;padding:12px}
+.map-stop-info span{font-size:9px;color:#8b9cae;letter-spacing:.8px}
+.map-stop-info strong{font-size:12px;font-weight:750;margin:0 0 8px}
+.camera-placeholder{min-height:380px;border-radius:18px;background:radial-gradient(circle at 55% 40%,#434951,#151923 70%);display:grid;place-items:center;text-align:center;padding:20px}
+.camera-placeholder>span{font-size:100px;color:#bbc4d3}
+.fake-shutter{height:57px;width:57px;border-radius:50%;background:#eee;border:5px solid #434b59;box-shadow:0 0 0 3px #fafafa;margin:0 auto}
+.phone-home-screen{background:linear-gradient(135deg,#27365f,#161a39 50%,#162a32)}
+.home-app-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:36px}
+.home-app-grid button{background:transparent;border:0;color:#f8faff;font-size:10px;cursor:pointer;display:grid;place-items:center;gap:7px}
+.home-app-icon{height:66px;width:66px;border-radius:16px;background:linear-gradient(135deg,#5ae9bf,#287ebb);display:grid;place-items:center;font-size:37px;color:#061a1a;box-shadow:0 8px 20px #0004}
+.home-app-icon.maps-icon{background:linear-gradient(135deg,#4ba8f8,#7cbe8b);color:#fff}
+@media(max-width:520px){
+.live-card.ride-card{padding:11px 12px 9px}
+.transport-badge{height:34px;width:34px;font-size:25px}
+.transport-badge.rail{width:38px;font-size:14px}
+.transport-badge svg{width:23px;height:23px}
+.live-card .live-heading{font-size:12.5px}
+.live-card .live-secondary{font-size:11px}
+.live-card .live-pills{margin-bottom:4px}
+.live-card .service-pill,.live-card .line-pill,.live-card .operator-pill{font-size:7px}
+.phone-frame.widget-is-expanded .activity-area{top:45%}
+.phone-overlay{padding:54px 16px 26px}
+}

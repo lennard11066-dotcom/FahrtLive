@@ -787,3 +787,177 @@ document.addEventListener("visibilitychange", () => {
 
 initStudio();
 demoMode();
+
+
+
+/* FahrtLive Studio: interaktive Sperrbildschirm-Vorschau und Verkehrs-Badges.
+ * Die bestehende API-/Routenlogik bleibt unverändert.
+ */
+(function setupInteractivePhonePreview() {
+  const svgBus = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M5 11h14M8 19v2M16 19v2M8 15h2M14 15h2"/></svg>';
+  const svgTram = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3l4-2 4 2M12 3v2"/><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M4 13h16M8 9h3M13 9h3M7 22l3-3M17 22l-3-3"/></svg>';
+  const svgTrain = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="16" rx="4"/><path d="M5 12h14M8 22l3-3M16 22l-3-3M8 16h1M15 16h1"/></svg>';
+  const choices = ["auto","s","u","bus","tram","rail"];
+  const preview = { expanded:false, flashlight:false };
+
+  function inferMode(line) {
+    const name=String(line||"").trim().toUpperCase();
+    if (/^S(?:\s|[0-9])/.test(name) || name==="S" || name.includes("S-BAHN")) return "s";
+    if (/^U(?:\s|[0-9])/.test(name) || name==="U" || name.includes("U-BAHN")) return "u";
+    if (/^(ICE|IC|EC|RE|RB|IRE|RJ|FLX|REGIO)/.test(name)) return "rail";
+    if (/^(STR|TRAM|STB|M[0-9]|T[0-9])/.test(name)) return "tram";
+    if (/^(BUS|X[0-9]|N[0-9]|[0-9])/.test(name)) return "bus";
+    return "rail";
+  }
+
+  function badgeFor(type, line, phase) {
+    if (state.mode==="demo" && phase==="walk") {
+      return {className:"sbahn",symbol:"↗",service:"FUẞWEG",operator:"RMV-LOOK",end:svgBus};
+    }
+    if (state.mode==="demo" && phase==="arrived") {
+      return {className:"sbahn",symbol:"✓",service:"ANGEKOMMEN",operator:"RMV-LOOK",end:svgTrain};
+    }
+    const badges={
+      s:{className:"sbahn",symbol:"S",service:"S-BAHN",operator:"RMV-LOOK",end:svgTrain},
+      u:{className:"ubahn",symbol:"U",service:"U-BAHN",operator:"RMV-LOOK",end:svgTrain},
+      bus:{className:"bus",symbol:svgBus,service:"BUS",operator:"RMV-LOOK",end:svgBus},
+      tram:{className:"tram",symbol:svgTram,service:"TRAM",operator:"RMV-LOOK",end:svgTram},
+      rail:{className:"rail",symbol:"DB",service:"BAHN",operator:"DB-LOOK",end:svgTrain}
+    };
+    return badges[type] || badges.bus;
+  }
+
+  function enhancedRender() {
+    const journey=currentJourney();
+    if(!journey)return;
+    const badge=$id("live-badge");
+    const select=$id("demo-transport");
+    const forced=state.mode==="demo" ? select.value : "auto";
+    const type=forced==="auto" ? inferMode(journey.line) : forced;
+    const stage=state.mode==="demo" ? demoConfig.stage : "ride";
+    const info=badgeFor(type,journey.line,stage);
+    badge.className="transport-badge "+info.className;
+    $id("live-badge-art").innerHTML=info.symbol;
+    setText("live-service",info.service);
+    setText("live-line-pill",journey.line);
+    setText("live-operator",info.operator);
+    $id("live-progress-end").innerHTML=info.end;
+    badge.disabled=state.mode!=="demo";
+    badge.setAttribute("aria-label",state.mode==="demo"
+      ? "Demo-Verkehrsmittel wechseln. Aktuell: "+info.service
+      : "Verkehrsmittel "+info.service);
+
+    const panel=$id("live-route-panel");
+    panel.hidden=!preview.expanded;
+    $id("widget-toggle").setAttribute("aria-expanded",String(preview.expanded));
+    $id("widget-toggle").innerHTML=preview.expanded
+      ? 'Weniger anzeigen <span aria-hidden="true">⌃</span>'
+      : 'Mehr anzeigen <span aria-hidden="true">⌄</span>';
+    $id("phone-root").classList.toggle("widget-is-expanded",preview.expanded);
+
+    const progress=state.mode==="demo"
+      ? numberInRange(demoConfig.progress,0,100,0)
+      : Math.round(progressOf(journey)*100);
+    const bar=$id("live-bar-click");
+    bar.setAttribute("aria-valuenow",String(progress));
+    bar.setAttribute("aria-disabled",String(state.mode!=="demo"));
+    bar.setAttribute("aria-label",state.mode==="demo"
+      ? "Demo-Fortschritt "+progress+" Prozent, mit Pfeiltasten einstellbar"
+      : "Geschätzter Fahrtfortschritt "+progress+" Prozent");
+
+    $id("phone-actions").hidden=false;
+    $id("phone-flash").hidden=!$id("demo-show-shortcuts").checked;
+    $id("phone-camera").hidden=!$id("demo-show-shortcuts").checked;
+    setText("phone-map-from",journey.origin);
+    setText("phone-map-to",journey.destination);
+  }
+
+  const nativeRender=renderPhone;
+  renderPhone=function() {
+    nativeRender();
+    enhancedRender();
+  };
+
+  function toggleDetails() {
+    preview.expanded=!preview.expanded;
+    enhancedRender();
+  }
+  function cycleBadge() {
+    if(state.mode!=="demo")return;
+    const selector=$id("demo-transport");
+    const idx=choices.indexOf(selector.value);
+    selector.value=choices[(idx+1)%choices.length];
+    enhancedRender();
+  }
+  function adjustProgress(deltaOrAbsolute,isAbsolute) {
+    if(state.mode!=="demo")return;
+    demoConfig.progress=numberInRange(isAbsolute?deltaOrAbsolute:demoConfig.progress+deltaOrAbsolute,0,100,0);
+    $id("demo-progress").value=String(demoConfig.progress);
+    setText("demo-progress-out",Math.round(demoConfig.progress)+" %");
+    renderPhone();
+  }
+  function closeOverlays() {
+    for(const id of ["phone-map-screen","phone-camera-screen","phone-home-screen"]) {
+      $id(id).hidden=true;
+    }
+  }
+  function openOverlay(id) {
+    closeOverlays();
+    $id(id).hidden=false;
+  }
+
+  $id("live-badge").addEventListener("click",(event)=>{
+    event.stopPropagation();
+    cycleBadge();
+  });
+  $id("widget-toggle").addEventListener("click",(event)=>{
+    event.stopPropagation();
+    toggleDetails();
+  });
+  $id("live-card").addEventListener("click",(event)=>{
+    if(event.target.closest("button") || event.target.closest('[role="slider"]'))return;
+    toggleDetails();
+  });
+  const bar=$id("live-bar-click");
+  bar.addEventListener("click",(event)=>{
+    event.stopPropagation();
+    if(state.mode!=="demo")return;
+    const rect=bar.getBoundingClientRect();
+    if(rect.width>0)adjustProgress(Math.round(100*(event.clientX-rect.left)/rect.width),true);
+  });
+  bar.addEventListener("keydown",(event)=>{
+    if(state.mode!=="demo")return;
+    const keys={ArrowRight:5,ArrowUp:5,ArrowLeft:-5,ArrowDown:-5};
+    if(Object.hasOwn(keys,event.key))adjustProgress(keys[event.key],false);
+    else if(event.key==="Home")adjustProgress(0,true);
+    else if(event.key==="End")adjustProgress(100,true);
+    else return;
+    event.preventDefault();
+  });
+  $id("demo-transport").addEventListener("input",enhancedRender);
+  $id("demo-transport").addEventListener("change",enhancedRender);
+  for(const id of ["demo-show-shortcuts","demo-show-progress","demo-network"]) {
+    $id(id).addEventListener("change",enhancedRender);
+  }
+  $id("phone-flash").addEventListener("click",()=>{
+    preview.flashlight=!preview.flashlight;
+    $id("phone-flash").setAttribute("aria-pressed",String(preview.flashlight));
+    $id("phone-root").classList.toggle("is-flash-on",preview.flashlight);
+  });
+  $id("phone-camera").addEventListener("click",()=>openOverlay("phone-camera-screen"));
+  $id("phone-camera-close").addEventListener("click",closeOverlays);
+  $id("phone-map-open").addEventListener("click",()=>openOverlay("phone-map-screen"));
+  $id("phone-map-close").addEventListener("click",closeOverlays);
+  $id("phone-home").addEventListener("click",()=>openOverlay("phone-home-screen"));
+  $id("phone-home-close").addEventListener("click",closeOverlays);
+  $id("home-open-fahrt").addEventListener("click",()=>{
+    closeOverlays();
+    selectPanel("demo");
+  });
+  $id("home-open-map").addEventListener("click",()=>openOverlay("phone-map-screen"));
+  document.addEventListener("keydown",(event)=>{
+    if(event.key==="Escape")closeOverlays();
+  });
+
+  enhancedRender();
+})();
