@@ -1,8 +1,9 @@
 "use strict";
 
 // Browser-only demo. Keine Apple-Pushes und keine echte iOS-Live-Aktivität.
-const API_BASE = "https://v6.db.transport.rest";
-const AUTO_REFRESH_MS = 60_000;
+const API_BASE = "https://api.transitous.org";
+// Transitous ist ein ehrenamtlicher Dienst. Browser-Anfragen sparsam verwenden.
+const AUTO_REFRESH_MS = 120_000;
 const $ = (selector) => document.querySelector(selector);
 
 const state = {
@@ -198,33 +199,97 @@ function showBusy(busy) {
   elements.search.textContent = busy ? "Verbindung wird geladen …" : "⌕ Verbindungen suchen";
 }
 
+function adaptMotisItinerary(itinerary) {
+  if (!itinerary || !Array.isArray(itinerary.legs)) return null;
+  return {
+    refreshToken: itinerary.id || null,
+    legs: itinerary.legs.map(leg => {
+      const nonTransit = ["WALK", "BIKE", "CAR"].includes(leg.mode);
+      const route = leg.displayName || leg.routeShortName || leg.tripShortName ||
+        leg.routeLongName || leg.mode || "Verbindung";
+      // Alte UI erwartet HAFAS-ähnliche Legs; convertiert aus MOTIS.
+      const stopovers = [leg.from, ...(leg.intermediateStops || []), leg.to]
+        .filter(Boolean).map(stop => ({
+          stop: { name: stop.name },
+          arrival: stop.arrival || stop.scheduledArrival || null,
+          departure: stop.departure || stop.scheduledDeparture || null
+        }));
+      const start = leg.startTime || leg.scheduledStartTime;
+      const end = leg.endTime || leg.scheduledEndTime;
+      const scheduledEnd = leg.realTime === true ? leg.scheduledEndTime : null;
+      const delay = scheduledEnd && end
+        ? Math.round((new Date(end).getTime() - new Date(scheduledEnd).getTime()) / 1000)
+        : null;
+      return {
+        origin: { name: leg.from?.name || "Start" },
+        destination: { name: leg.to?.name || "Ziel" },
+        departure: start, plannedDeparture: leg.scheduledStartTime,
+        arrival: end, plannedArrival: scheduledEnd,
+        arrivalDelay: delay,
+        walking: nonTransit,
+        line: nonTransit ? null : { name: route },
+        name: nonTransit ? "Fußweg" : route,
+        stopovers, cancelled: Boolean(leg.cancelled)
+      };
+    })
+  };
+}
+
 async function requestJSON(path, params = {}) {
-  const url = new URL(API_BASE + path);
-  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  let endpoint, query;
+  if (path === "/locations") {
+    endpoint = "/api/v1/geocode";
+    query = { text: params.query, type: "STOP", numResults: "8", language: "de" };
+  } else if (path === "/journeys") {
+    endpoint = "/api/v6/plan";
+    query = {
+      fromPlace: params.from, toPlace: params.to, numItineraries: "5",
+      maxItineraries: "5", searchWindow: "1800", language: "de"
+    };
+  } else if (path.startsWith("/journeys/")) {
+    endpoint = "/api/v6/refresh-itinerary";
+    query = { itineraryId: decodeURIComponent(path.slice("/journeys/".length)), language: "de" };
+  } else {
+    throw new Error("Unbekannter API-Endpunkt.");
+  }
+
+  const url = new URL(API_BASE + endpoint);
+  Object.entries(query).forEach(([key, value]) => url.searchParams.set(key, value));
   const abort = new AbortController();
-  const timeout = setTimeout(() => abort.abort(), 18000);
+  const timeout = setTimeout(() => abort.abort(), 18_000);
   try {
     const response = await fetch(url, {
       signal: abort.signal,
-      headers: {"Accept":"application/json"},
+      headers: {"Accept": "application/json"},
       cache: "no-store"
     });
     if (!response.ok) {
-      if (response.status === 429) throw new Error("Zu viele API-Anfragen. Bitte etwas später versuchen.");
-      throw new Error("API-Anfrage fehlgeschlagen (HTTP " + response.status + ").");
+      if (response.status === 429) throw new Error("Zu viele API-Anfragen. Bitte später erneut versuchen.");
+      throw new Error("Transitous-Anfrage fehlgeschlagen (HTTP " + response.status + ").");
     }
-    return await response.json();
-  } catch (error) {
-    if (error.name === "AbortError") throw new Error("Zeitüberschreitung bei der DB-Anfrage.");
+    const result = await response.json();
+    if (path === "/locations") {
+      if (!Array.isArray(result)) throw new Error("Ungültige Haltestellen-Antwort.");
+      return result.filter(x => x && x.id && x.name && x.type === "STOP")
+        .map(x => ({ id: x.id, name: x.name }));
+    }
+    if (path === "/journeys") {
+      if (!Array.isArray(result.itineraries)) throw new Error("Ungültige Verbindungsantwort.");
+      return { journeys: result.itineraries.slice(0,5).map(adaptMotisItinerary).filter(Boolean) };
+    }
+    const converted = adaptMotisItinerary(result);
+    if (!converted) throw new Error("Die Fahrt konnte nicht aktualisiert werden.");
+    return { journey: converted };
+  } catch(error) {
+    if (error.name === "AbortError") throw new Error("Transitous hat nicht rechtzeitig geantwortet.");
     if (error instanceof TypeError) {
-      throw new Error("Keine Verbindung zur DB-API. Internetverbindung prüfen.");
+      throw new Error("Transitous ist nicht erreichbar oder der Browser blockiert die Anfrage. Bitte später erneut versuchen.");
     }
     throw error;
   } finally {
     clearTimeout(timeout);
   }
 }
-
 async function resolveStop(name) {
   const query = name.trim();
   const locations = await requestJSON("/locations", {
@@ -401,7 +466,7 @@ elements.swap.addEventListener("click", () => {
 elements.auto.addEventListener("change", () => {
   state.autoRefresh = elements.auto.checked;
   displayStatus(state.autoRefresh
-    ? "Automatische Updates aktiviert (nur bei geöffnetem Tab)."
+    ? "Automatische Updates aktiviert (alle 2 Minuten bei geöffnetem Tab)."
     : "Automatische Updates deaktiviert.");
 });
 
