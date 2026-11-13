@@ -1,6 +1,184 @@
 "use strict";
 
 // Browser-only demo. Keine Apple-Pushes und keine echte iOS-Live-Aktivität.
+const DEFAULT_DEMO = Object.freeze({
+  stage: "ride",
+  line: "S4",
+  direction: "Kronberg (Taunus) Bahnhof",
+  boardStop: "Kronberg (Taunus) Bahnhof",
+  nextStop: "Kronberg (Taunus) Bahnhof",
+  departure: "07:06",
+  minutes: 2,
+  nextMinutes: 2,
+  delay: 0,
+  progress: 82,
+  transferLine: "71",
+  transferTime: "07:25",
+  transferStop: "Kronberg (Taunus) Bahnhof",
+  transferEnabled: true
+});
+const DEMO_PHASES = ["walk", "board", "ride", "next", "exit", "transfer", "arrived"];
+const PHASE_NAMES = {
+  walk: "ZUM BAHNHOF", board: "EINSTEIGEN", ride: "UNTERWEGS",
+  next: "NÄCHSTER HALT", exit: "AUSSTIEG", transfer: "UMSTIEG", arrived: "ANGEKOMMEN"
+};
+const $id = (id) => document.getElementById(id);
+let demoConfig = {...DEFAULT_DEMO};
+let stageTimer = null;
+
+function numberInRange(value, min, max, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(min, Math.min(max, parsed)) : fallback;
+}
+
+function setText(id, value) {
+  const el = $id(id);
+  if (el) el.textContent = String(value);
+}
+
+function setShown(id, show) {
+  const el = $id(id);
+  if (el) el.hidden = !show;
+}
+
+function syncPresetButtons() {
+  document.querySelectorAll("[data-preset]").forEach((btn) => {
+    const active = btn.dataset.preset === demoConfig.stage;
+    btn.classList.toggle("selected", active);
+    btn.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function syncDemoForm() {
+  const pairs = {
+    "demo-stage": demoConfig.stage,
+    "demo-line": demoConfig.line,
+    "demo-direction": demoConfig.direction,
+    "demo-stop": demoConfig.boardStop,
+    "demo-next": demoConfig.nextStop,
+    "demo-departure": demoConfig.departure,
+    "demo-minutes": demoConfig.minutes,
+    "demo-next-minutes": demoConfig.nextMinutes,
+    "demo-delay": demoConfig.delay,
+    "demo-progress": demoConfig.progress,
+    "demo-transfer-line": demoConfig.transferLine,
+    "demo-transfer-time": demoConfig.transferTime,
+    "demo-transfer-stop": demoConfig.transferStop
+  };
+  for (const [id, value] of Object.entries(pairs)) $id(id).value = value;
+  $id("demo-transfer-enabled").checked = demoConfig.transferEnabled;
+  setText("demo-progress-out", demoConfig.progress + " %");
+  syncPresetButtons();
+}
+
+function readDemoForm() {
+  demoConfig = {
+    stage: DEMO_PHASES.includes($id("demo-stage").value) ? $id("demo-stage").value : "ride",
+    line: $id("demo-line").value.trim().slice(0, 12) || "S4",
+    direction: $id("demo-direction").value.trim().slice(0, 85) || "Kronberg (Taunus) Bahnhof",
+    boardStop: $id("demo-stop").value.trim().slice(0, 85) || "Bahnhof",
+    nextStop: $id("demo-next").value.trim().slice(0, 85) || "Nächster Halt",
+    departure: $id("demo-departure").value || "07:06",
+    minutes: numberInRange($id("demo-minutes").value, 0, 240, 2),
+    nextMinutes: numberInRange($id("demo-next-minutes").value, 0, 240, 2),
+    delay: numberInRange($id("demo-delay").value, -30, 180, 0),
+    progress: numberInRange($id("demo-progress").value, 0, 100, 82),
+    transferLine: $id("demo-transfer-line").value.trim().slice(0, 15) || "71",
+    transferTime: $id("demo-transfer-time").value || "07:25",
+    transferStop: $id("demo-transfer-stop").value.trim().slice(0, 90) || "Umstieg",
+    transferEnabled: $id("demo-transfer-enabled").checked
+  };
+  setText("demo-progress-out", Math.round(demoConfig.progress) + " %");
+  syncPresetButtons();
+}
+
+function selectPanel(panel) {
+  for (const tab of ["demo", "real", "design"]) {
+    const active = tab === panel;
+    $id("panel-" + tab).hidden = !active;
+    $id("tab-" + tab).classList.toggle("active", active);
+    $id("tab-" + tab).setAttribute("aria-selected", String(active));
+  }
+}
+
+function selectDemoStage(stage) {
+  if (!DEMO_PHASES.includes(stage)) return;
+  demoConfig.stage = stage;
+  const progress = {walk:0, board:4, ride:55, next:76, exit:90, transfer:95, arrived:100};
+  demoConfig.progress = progress[stage];
+  syncDemoForm();
+  demoMode();
+}
+
+function stopDemoPlayback() {
+  if (stageTimer !== null) {
+    clearInterval(stageTimer);
+    stageTimer = null;
+  }
+  const button = $id("demo-play");
+  if (button) button.textContent = "▷ Animation abspielen";
+}
+
+function nextDemoStage() {
+  const next = (DEMO_PHASES.indexOf(demoConfig.stage) + 1) % DEMO_PHASES.length;
+  selectDemoStage(DEMO_PHASES[next]);
+}
+
+function startDemoPlayback() {
+  if (stageTimer !== null) {
+    stopDemoPlayback();
+    return;
+  }
+  selectDemoStage("walk");
+  $id("demo-play").textContent = "Ⅱ Animation stoppen";
+  stageTimer = setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    if (state.mode !== "demo") {
+      stopDemoPlayback();
+      return;
+    }
+    if (demoConfig.stage === "arrived") {
+      stopDemoPlayback();
+      return;
+    }
+    nextDemoStage();
+  }, 4500);
+}
+
+function liveCardText(journey) {
+  if (state.mode !== "demo") {
+    return {
+      stage: "ride",
+      headline: "Fahre in Richtung " + journey.destination,
+      secondary: "Nächster Halt · " + journey.nextStop,
+      tertiary: journey.cancelled ? "Verbindung fällt aus" : (
+        journey.arrivalDelay === null ? "Planzeit" : delayText(Math.round(journey.arrivalDelay / 60))
+      )
+    };
+  }
+  const c = demoConfig;
+  switch (c.stage) {
+    case "walk":
+      return {stage:c.stage, headline:"Zu Haltestelle gehen", secondary:c.line + " nehmen", tertiary:c.departure};
+    case "board":
+      return {stage:c.stage, headline:c.line + " nehmen", secondary:c.boardStop, tertiary:c.departure};
+    case "next":
+      return {stage:c.stage, headline:"Nächster Halt: " + c.nextStop,
+        secondary:"Noch " + c.nextMinutes + " min", tertiary:c.direction};
+    case "exit":
+      return {stage:c.stage, headline:"Ausstieg: " + c.nextStop, secondary:"Nächster Halt · " + c.nextMinutes + " min",
+        tertiary:c.transferEnabled ? "Umsteigen in " + c.transferLine + " · " + c.transferTime : ""};
+    case "transfer":
+      return {stage:c.stage, headline:"Umsteigen in " + c.transferLine, secondary:c.transferStop,
+        tertiary:"Nächste Abfahrt · " + c.transferTime};
+    case "arrived":
+      return {stage:c.stage, headline:"Ziel erreicht", secondary:c.direction, tertiary:"Gute Fahrt!"};
+    default:
+      return {stage:"ride", headline:"Fahre in Richtung " + c.direction, secondary:"Nächster Halt · " + c.nextMinutes + " min",
+        tertiary:c.transferEnabled ? "" : ""};
+  }
+}
+
 const API_BASE = "https://api.transitous.org";
 // Transitous ist ein ehrenamtlicher Dienst. Browser-Anfragen sparsam verwenden.
 const AUTO_REFRESH_MS = 120_000;
@@ -90,31 +268,31 @@ function displayStatus(message, kind = "info") {
 
 function makeDemo() {
   const now = Date.now();
-  const dep = new Date(now - 9 * 60000).toISOString();
-  const arr = new Date(now + 21 * 60000).toISOString();
+  const total = Math.max(1, demoConfig.minutes + 22);
+  const departure = new Date(now - Math.min(120, total * demoConfig.progress / 100) * 60_000).toISOString();
+  const arrival = new Date(now + demoConfig.minutes * 60_000).toISOString();
   return {
     id: "demo",
     isDemo: true,
-    origin: "Kronberg (Taunus)",
-    destination: "Frankfurt (Main) Hbf",
-    departure: dep,
-    arrival: arr,
-    line: "S4",
-    nextStop: "Frankfurt-Rödelheim",
-    arrivalDelay: 300,
+    origin: demoConfig.boardStop,
+    destination: demoConfig.direction,
+    departure,
+    arrival,
+    line: demoConfig.line,
+    nextStop: demoConfig.nextStop,
+    arrivalDelay: demoConfig.delay * 60,
     refreshToken: null,
     cancelled: false,
     legs: [{
-      line: "S4",
-      from: "Kronberg (Taunus)",
-      to: "Frankfurt (Main) Hbf",
-      departure: dep,
-      arrival: arr,
+      line: demoConfig.line,
+      from: demoConfig.boardStop,
+      to: demoConfig.direction,
+      departure,
+      arrival,
       walking: false
     }]
   };
 }
-
 function currentJourney() {
   return state.journeys.find((journey) => journey.id === state.selectedId) || null;
 }
@@ -429,29 +607,104 @@ function render() {
 }
 
 function renderPhone() {
-  const now = new Date();
-  elements.phoneTime.textContent = clockTime(now).replace(/^0/, "");
-  elements.clock.textContent = clockTime(now);
-  elements.date.textContent = new Intl.DateTimeFormat("de-DE", {
-    weekday:"long", day:"numeric", month:"long"
-  }).format(now);
-
   const journey = currentJourney();
   if (!journey) return;
-  elements.liveLine.textContent = journey.line;
-  elements.liveNext.textContent = journey.nextStop;
-  elements.liveDestination.textContent = journey.destination;
-  elements.liveArrival.textContent = clockTime(journey.arrival);
-  const remaining = minuteDuration(dateFrom(journey.arrival)?.getTime() - now.getTime());
-  elements.liveRemaining.textContent = remaining + " Min.";
-  elements.liveProgress.style.width = Math.round(progressOf(journey) * 100) + "%";
+  const override = $id("demo-use-clock").checked;
+  const clock = override ? ($id("demo-clock").value || "07:16") : clockTime(new Date());
+  setText("phone-status-time", clock);
+  setText("lock-clock", clock);
+  setText("lock-date", new Intl.DateTimeFormat("de-DE", {
+    weekday:"short", day:"numeric", month:"short"
+  }).format(new Date()));
 
-  const delay = journey.arrivalDelay === null ? null : Math.round(journey.arrivalDelay / 60);
-  elements.liveDelay.textContent = journey.cancelled ? "Ausfall" : (
-    delay === null ? "Keine Echtzeit" : (delay > 0 ? "+" + delay + " Min." : delay < 0 ? Math.abs(delay) + " Min. früher" : "Pünktlich")
-  );
-  elements.liveDelay.classList.toggle("good", !journey.cancelled && delay !== null && delay <= 0);
-  elements.liveDelay.classList.toggle("muted", !journey.cancelled && delay === null);
+  const battery = numberInRange($id("demo-battery").value, 1, 100, 33);
+  setText("live-battery", battery);
+  setText("demo-battery-out", battery + " %");
+  setText("live-network", $id("demo-network").value);
+  setShown("live-media", $id("demo-show-airpods").checked);
+  setShown("phone-actions", $id("demo-show-shortcuts").checked);
+
+  const labels = liveCardText(journey);
+  setText("preview-stage", state.mode === "demo" ? PHASE_NAMES[labels.stage] : "ECHTZEIT");
+  setText("live-heading", labels.headline);
+  setText("live-secondary", labels.secondary);
+  setText("live-tertiary", labels.tertiary);
+  setShown("live-tertiary", Boolean(labels.tertiary));
+
+  const line = journey.line || "S";
+  const symbol = line.toUpperCase().startsWith("S") ? "S"
+    : line.toUpperCase().startsWith("U") ? "U" : line.toUpperCase().startsWith("RE") ? "R" : "↗";
+  setText("live-state-icon", ["walk","arrived"].includes(labels.stage) ? (labels.stage==="walk"?"➜":"✓") : symbol);
+
+  const showProgress = $id("demo-show-progress").checked &&
+    (state.mode === "real" || !["walk","board","arrived"].includes(labels.stage));
+  setShown("live-progress-area", showProgress);
+
+  const progress = state.mode === "demo"
+    ? demoConfig.progress : Math.round(progressOf(journey) * 100);
+  $("#live-progress").style.width = progress + "%";
+  $("#live-progress-marker").style.left = progress + "%";
+
+  setText("live-line", line);
+  setText("live-next", journey.nextStop);
+  setText("live-destination", journey.destination);
+  setText("live-arrival", state.mode === "demo" ? demoConfig.departure : clockTime(journey.arrival));
+  setText("live-remaining", state.mode === "demo"
+    ? demoConfig.minutes + " Min." : minuteDuration(dateFrom(journey.arrival)?.getTime() - Date.now()) + " Min.");
+  const minsDelay = journey.arrivalDelay === null ? null : Math.round(journey.arrivalDelay / 60);
+  setText("live-delay", journey.cancelled ? "Ausfall" : delayText(minsDelay));
+
+  // Optional: im Demo-Modus Verspätungs-Information zusätzlich in der 3. Textzeile zeigen.
+  if (state.mode === "demo" && $id("demo-show-delay").checked && demoConfig.delay !== 0 &&
+      ["ride","next"].includes(labels.stage)) {
+    setText("live-tertiary", delayText(demoConfig.delay));
+    setShown("live-tertiary", true);
+  }
+
+  const active = state.mode === "demo" ? "Demo-Fahrt" : "Echte Verbindung";
+  $("#phone-root").setAttribute("aria-label", active + ", Phase: " + PHASE_NAMES[labels.stage]);
+}
+
+function initStudio() {
+  syncDemoForm();
+  for (const tab of ["demo", "real", "design"]) {
+    $id("tab-" + tab).addEventListener("click", () => selectPanel(tab));
+  }
+  document.querySelectorAll("[data-preset]").forEach((button) => {
+    button.addEventListener("click", () => selectDemoStage(button.dataset.preset));
+  });
+
+  const settings = [
+    "demo-stage", "demo-line", "demo-direction", "demo-stop", "demo-next", "demo-departure",
+    "demo-minutes", "demo-next-minutes", "demo-delay", "demo-progress",
+    "demo-transfer-line", "demo-transfer-time", "demo-transfer-stop", "demo-transfer-enabled"
+  ];
+  for (const id of settings) {
+    $id(id).addEventListener("input", () => {
+      readDemoForm();
+      demoMode();
+    });
+  }
+  $id("demo-reset").addEventListener("click", () => {
+    stopDemoPlayback();
+    demoConfig = {...DEFAULT_DEMO};
+    syncDemoForm();
+    demoMode();
+  });
+  $id("demo-play").addEventListener("click", startDemoPlayback);
+  $id("demo-next-stage").addEventListener("click", () => {
+    stopDemoPlayback();
+    nextDemoStage();
+  });
+  const designControls = [
+    "demo-network","demo-battery","demo-clock","demo-use-clock",
+    "demo-show-airpods","demo-show-shortcuts","demo-show-progress","demo-show-delay"
+  ];
+  for (const id of designControls) {
+    $id(id).addEventListener("input", renderPhone);
+    $id(id).addEventListener("change", renderPhone);
+  }
+  $id("demo").addEventListener("click", () => selectPanel("demo"));
 }
 
 elements.form.addEventListener("submit", (event) => {
@@ -489,4 +742,5 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+initStudio();
 demoMode();
